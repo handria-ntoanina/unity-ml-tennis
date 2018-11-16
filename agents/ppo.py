@@ -91,7 +91,7 @@ class PPO():
 
         advantages = [None] * actions.shape[0]
         returns_array = [None] * actions.shape[0]
-        advantage = torch.tensor(0, device=self.device, dtype=torch.float32)
+        advantage = torch.zeros(rewards[0].shape, device=self.device, dtype=torch.float32)
 
         for i in reversed(range(states.shape[0])):
             assert returns.shape == rewards[i].shape, "{} != {}".format(returns.shape, rewards[i].shape)
@@ -145,7 +145,7 @@ class PPO():
                 value_loss = self.loss_function(estimated_values, sampled_returns.detach())
                 self.optim.zero_grad()
                 (policy_loss + value_loss).backward()
-#                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.GRADIENT_CLIP)
+                torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.GRADIENT_CLIP)
                 self.optim.step()
                 
                 self.steps_backprop += 1
