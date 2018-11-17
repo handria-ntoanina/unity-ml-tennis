@@ -1,62 +1,85 @@
-[//]: # (Image References)
-
-[image1]: https://user-images.githubusercontent.com/10624937/42135623-e770e354-7d12-11e8-998d-29fc74429ca2.gif "Trained Agent"
-[image2]: https://user-images.githubusercontent.com/10624937/42135622-e55fb586-7d12-11e8-8a54-3c31da15a90a.gif "Soccer"
+With pytorch 0.4.1, it is needed to fix an issue in Anaconda3\envs\drlnd\Lib\site-packages\torch\distributions\utils.py. That version does not recognize torch.nn.Parameter as a Tensor during backpropagation.
+So to fix it, at the line 69, change the code if values[i].__class__.__name__ == 'Tensor' into if isinstance(values[i], torch.Tensor)
 
 
-# Project 3: Collaboration and Competition
+# unity-ml-reacher
+This repository contains an implementation of reinforcement learning based on:
+	* DDPG but using parallel agents to solve the unity reacher environment
+	* Proximal Policy Optimization with a Critic Network as a baseline and with a Generalized Advantage Estimation
+It has a 20 double-jointed arms. Each one has to reach a target. Whenever one arm reaches its target, a reward of up to +0.1 is received. This environment is simliar to the [reacher of Unity](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Learning-Environment-Examples.md#reacher).<br/>
+The action space is continuous [-1.0, +1.0] and consists of 4 values for 4 torques to be applied to the two joints. <br/>
+`The environment is considered as solved if the average score of the 20 agents is +30 for 100 consecutive episodes.`<br/>
+A video of a trained agent can be found by clicking on the image here below <br/>
+* DDPG: [![Video](https://img.youtube.com/vi/6s2ejba1s_s/0.jpg)](https://www.youtube.com/watch?v=6s2ejba1s_s)
+* PPO: [![Video](https://img.youtube.com/vi/E0uoV_c21w8/0.jpg)](https://www.youtube.com/watch?v=E0uoV_c21w8)
+## Content of this repository
+* __report.pdf__: a document that describes the details of  implementation of the DDPG, along with ideas for future work
+* __report-ppo.pdf: a document that describes the details of implementation of the PPO
+* folder __agents__: contains the implementation of
+	* a parallel DDPG using one network shared by all agents
+	* a parallel DDPG with multiple network
+	* an Actor-Critic network model using tanh as activation
+	* a ReplayBuffer
+	* an ActionNoise that disturb the output of the actor network to promote exploration
+	* a ParameterNoise that disturb the weight of the actor network to promote exploration
+	* an Ornstein-Uhlenbeck noise generator
+	* an implementation of a Proximal Policy Optimization
+	* a Gaussian Actor Critic network for the PPO
+* folder __started_to_converge__: weights of a network that started to converge but slowly
+* folder __weights__: 
+	* weights of the network trained with DDPG that solved this environment. It contains as well the history of the weights.
+	* weights of the Gaussian Actor Critic Network that solved this environment with PPO
+* folder __research__:
+	* Cozmo25 customized the source code of ShangTong to solve the reacher using PPO
+	* this folder contains one file all.py that has only the code necessary by the PPO
+	* compare.ipynb to compare the performance between that implementation and the ppo.py of this repository
+* Notebooks
+	* jupyter notebook __Continuous_Control.ipynb__: run this notebook to train the agents using DDPG
+	* jupyter notebook __noise.ipynb__: use this notebook to optimize the hyperparameter of the noise generator to check that its output would not limit the exploration
+	* jupyter notebook __view.ipynb__: a notebook that can load the different saved network weights trained with DDPG and visualize the agents
+	* jupyter notebook __Continuous_Control-PPO.ipynb__: a notebook to train an agent using PPO and then to view the trained agent
+## Requirements
+To run the codes, follow the next steps:
+* Create a new environment:
+	* __Linux__ or __Mac__: 
+	```bash
+	conda create --name ddpg python=3.6
+	source activate ddpg
+	```
+	* __Windows__: 
+	```bash
+	conda create --name ddpg python=3.6 
+	activate ddpg
+	```
+* Perform a minimal install of OpenAI gym
+	* If using __Windows__, 
+		* download swig for windows and add it the PATH of windows
+		* install Microsoft Visual C++ Build Tools
+	* then run these commands
+	```bash
+	pip install gym
+	pip install gym[classic_control]
+	pip install gym[box2d]
+	```
+* Install the dependencies under the folder python/
+```bash
+	cd python
+	pip install .
+```
+* Create an IPython kernel for the `ddpg` environment
+```bash
+	python -m ipykernel install --user --name ddpg --display-name "ddpg"
+```
+* Download the Unity Environment (thanks to Udacity) which matches your operating system
+	* [Linux](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P2/Reacher/Reacher_Linux.zip)
+	* [Mac OSX](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P2/Reacher/Reacher.app.zip)
+	* [Windows (32-bits)](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P2/Reacher/Reacher_Windows_x86.zip)
+	* [Windows (64 bits)](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P2/Reacher/Reacher_Windows_x86_64.zip)
 
-### Introduction
+* Start jupyter notebook from the root of this python codes
+```bash
+jupyter notebook
+```
+* Once started, change the kernel through the menu `Kernel`>`Change kernel`>`ddpg`
+* If necessary, inside the ipynb files, change the path to the unity environment appropriately
 
-For this project, you will work with the [Tennis](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Learning-Environment-Examples.md#tennis) environment.
-
-![Trained Agent][image1]
-
-In this environment, two agents control rackets to bounce a ball over a net. If an agent hits the ball over the net, it receives a reward of +0.1.  If an agent lets a ball hit the ground or hits the ball out of bounds, it receives a reward of -0.01.  Thus, the goal of each agent is to keep the ball in play.
-
-The observation space consists of 8 variables corresponding to the position and velocity of the ball and racket. Each agent receives its own, local observation.  Two continuous actions are available, corresponding to movement toward (or away from) the net, and jumping. 
-
-The task is episodic, and in order to solve the environment, your agents must get an average score of +0.5 (over 100 consecutive episodes, after taking the maximum over both agents). Specifically,
-
-- After each episode, we add up the rewards that each agent received (without discounting), to get a score for each agent. This yields 2 (potentially different) scores. We then take the maximum of these 2 scores.
-- This yields a single **score** for each episode.
-
-The environment is considered solved, when the average (over 100 episodes) of those **scores** is at least +0.5.
-
-### Getting Started
-
-1. Download the environment from one of the links below.  You need only select the environment that matches your operating system:
-    - Linux: [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis_Linux.zip)
-    - Mac OSX: [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis.app.zip)
-    - Windows (32-bit): [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis_Windows_x86.zip)
-    - Windows (64-bit): [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis_Windows_x86_64.zip)
-    
-    (_For Windows users_) Check out [this link](https://support.microsoft.com/en-us/help/827218/how-to-determine-whether-a-computer-is-running-a-32-bit-version-or-64) if you need help with determining if your computer is running a 32-bit version or 64-bit version of the Windows operating system.
-
-    (_For AWS_) If you'd like to train the agent on AWS (and have not [enabled a virtual screen](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Training-on-Amazon-Web-Service.md)), then please use [this link](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis_Linux_NoVis.zip) to obtain the "headless" version of the environment.  You will **not** be able to watch the agent without enabling a virtual screen, but you will be able to train the agent.  (_To watch the agent, you should follow the instructions to [enable a virtual screen](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Training-on-Amazon-Web-Service.md), and then download the environment for the **Linux** operating system above._)
-
-2. Place the file in the DRLND GitHub repository, in the `p3_collab-compet/` folder, and unzip (or decompress) the file. 
-
-### Instructions
-
-Follow the instructions in `Tennis.ipynb` to get started with training your own agent!  
-
-### (Optional) Challenge: Crawler Environment
-
-After you have successfully completed the project, you might like to solve the more difficult **Soccer** environment.
-
-![Soccer][image2]
-
-In this environment, the goal is to train a team of agents to play soccer.  
-
-You can read more about this environment in the ML-Agents GitHub [here](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Learning-Environment-Examples.md#soccer-twos).  To solve this harder task, you'll need to download a new Unity environment.  (**Note**: Udacity students should not submit a project with this new environment.)
-
-You need only select the environment that matches your operating system:
-- Linux: [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Soccer/Soccer_Linux.zip)
-- Mac OSX: [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Soccer/Soccer.app.zip)
-- Windows (32-bit): [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Soccer/Soccer_Windows_x86.zip)
-- Windows (64-bit): [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Soccer/Soccer_Windows_x86_64.zip)
-
-Then, place the file in the `p3_collab-compet/` folder in the DRLND GitHub repository, and unzip (or decompress) the file.  Next, open `Soccer.ipynb` and follow the instructions to learn how to use the Python API to control the agent.
-
-(_For AWS_) If you'd like to train the agents on AWS (and have not [enabled a virtual screen](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Training-on-Amazon-Web-Service.md)), then please use [this link](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Soccer/Soccer_Linux_NoVis.zip) to obtain the "headless" version of the environment.  You will **not** be able to watch the agents without enabling a virtual screen, but you will be able to train the agents.  (_To watch the agents, you should follow the instructions to [enable a virtual screen](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Training-on-Amazon-Web-Service.md), and then download the environment for the **Linux** operating system above._)

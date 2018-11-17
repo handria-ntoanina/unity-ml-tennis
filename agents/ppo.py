@@ -20,7 +20,8 @@ class PPO():
                 GAMMA=0.99,
                 GAE_TAU=0.95,
                 CLIP_EPSILON=1e-1,
-                BETA=0.01
+                C1=0.5,
+                C2=0.01
                 ):
         self.device = device
         self.network = network
@@ -31,8 +32,10 @@ class PPO():
         self.GAMMA=GAMMA
         self.CLIP_EPSILON=CLIP_EPSILON
         self.GAE_TAU=GAE_TAU
-        self.BETA=BETA
-        self.loss_function = torch.nn.SmoothL1Loss()
+        self.C1=C1
+        self.C2=C2
+        self.loss_function = lambda estimated, actual: (estimated - actual)**2
+#         self.loss_function = torch.nn.SmoothL1Loss()
 #         self.loss_function = F.mse_loss
         self.logger = logger
         self.steps = 0
@@ -140,13 +143,13 @@ class PPO():
                 clip = torch.clamp(ratio, 1-self.CLIP_EPSILON, 1+self.CLIP_EPSILON)
                 clipped_surrogate = torch.min(ratio*sampled_advantages, clip*sampled_advantages)
                 
-                # include a regularization term
-                # this steers new_policy towards 0.5
-                # add in 1.e-10 to avoid log(0) which gives nan
-                entropy = -(new_log_probs.exp()*sampled_log_probs) + \
-                        (1.0-new_log_probs.exp())*torch.log(1.0-sampled_log_probs.exp()+1.e-10)
-                
-                policy_loss = -(clipped_surrogate + self.BETA * entropy).mean()
+                # This entropy is included in the calculation of the gradient based on
+                # Udacity notebook of Pong-PPO under the chapter of Policy Gradient
+                # https://lilianweng.github.io/lil-log/2018/04/08/policy-gradient-algorithms.html#ppo
+                # the paper, https://arxiv.org/pdf/1707.06347.pdf
+                # and arxiv insight https://www.youtube.com/watch?v=5P7I-xPq8u8
+                # to promote exploration
+                entropy = -(new_log_probs.exp()*sampled_log_probs) 
                 
                 estimated_values = self.network.estimate(sampled_full_states).squeeze(-1)
                 
@@ -154,22 +157,21 @@ class PPO():
 .shape, sampled_returns.shape)
                 value_loss = self.loss_function(estimated_values, sampled_returns)
                 
-                
-                
                 self.optim.zero_grad()
-                total_loss = policy_loss + value_loss
+                value_loss = value_loss.unsqueeze(-1)
+                assert clipped_surrogate.shape == value_loss.shape, "{} != {}".format(clipped_surrogate.shape, value_loss.shape)
+                assert entropy.shape == value_loss.shape, "{} != {}".format(entropy.shape, value_loss.shape)
+                total_loss = - (clipped_surrogate - self.C1 * value_loss + self.C2 * entropy).mean()
                 total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.GRADIENT_CLIP)
                 self.optim.step()
                 
                 self.steps_backprop += 1
-                self.logger.add_scalar('ppo/value_loss', value_loss, self.steps_backprop)
-                self.logger.add_scalar('ppo/policy_loss', policy_loss, self.steps_backprop)
                 self.logger.add_scalar('ppo/total_loss', total_loss, self.steps_backprop)
                 
                 del idx, sampled_states, sampled_actions
                 del sampled_log_probs, sampled_advantages, sampled_returns
-                del new_log_probs, ratio, clip, clipped_surrogate, estimated_values, policy_loss, value_loss
+                del new_log_probs, ratio, clip, clipped_surrogate, estimated_values, value_loss, entropy
 
         del states, actions, log_probs, values, rewards, next_states, dones, returns, advantages, returns_array
     
