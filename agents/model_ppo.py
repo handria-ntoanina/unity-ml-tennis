@@ -17,8 +17,8 @@ class Gaussian(nn.Module):
         # This need a change in I:\MyDev\Anaconda3\envs\drlnd\Lib\site-packages\torch\distributions\utils.py
         # at the line 70, check the type using isinstance instead of __class__.__name__
         self.std = torch.nn.Parameter(torch.ones(1, action_size))
-        self.actor = FullyConnected([state_size, 128, 128, action_size], activation=activation)
-        self.critic = FullyConnected([full_state_size, 128, 128, 1], activation=activation)
+        self.actor = FullyConnected([state_size, 32, 32,  action_size], activation=activation)
+        self.critic = FullyConnected([full_state_size, 32, 32, 1], activation=activation)
     
     def get_mu_dist(self, state):
         mu = F.tanh(self.actor(state))

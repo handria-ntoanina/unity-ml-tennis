@@ -19,7 +19,8 @@ class PPO():
                  BATCH_SIZE=32,
                 GAMMA=0.99,
                 GAE_TAU=0.95,
-                CLIP_EPSILON=1e-1, 
+                CLIP_EPSILON=1e-1,
+                BETA=0.01
                 ):
         self.device = device
         self.network = network
@@ -30,6 +31,7 @@ class PPO():
         self.GAMMA=GAMMA
         self.CLIP_EPSILON=CLIP_EPSILON
         self.GAE_TAU=GAE_TAU
+        self.BETA=BETA
         self.loss_function = torch.nn.SmoothL1Loss()
 #         self.loss_function = F.mse_loss
         self.logger = logger
@@ -92,20 +94,21 @@ class PPO():
         advantages = [None] * actions.shape[0]
         returns_array = [None] * actions.shape[0]
         advantage = torch.zeros(rewards[0].shape, device=self.device, dtype=torch.float32)
+        
+        assert returns.shape == rewards[-1].shape, "{} != {}".format(returns.shape, rewards[-1].shape)
+        assert dones[-1].shape == rewards[-1].shape, "{} != {}".format(dones[-1].shape, rewards[-1].shape)
+        assert next_values[-1].shape == dones[-1].shape, "{} != {}".format(next_values[-1].shape, dones[-1].shape)
+        assert advantage.shape == dones[-1].shape, "{} != {}".format(advantage.shape, dones[-1].shape)
 
         for i in reversed(range(states.shape[0])):
-            assert returns.shape == rewards[i].shape, "{} != {}".format(returns.shape, rewards[i].shape)
-            assert dones[i].shape == rewards[i].shape, "{} != {}".format(dones[i].shape, rewards[i].shape)
             returns = rewards[i] + self.GAMMA*returns*dones[i]
-
             returns_array[i]=returns.unsqueeze(0).detach()
 
             # according to the implementation of ShangTong and to the paper 
             # High Dimensional Continuous Control Using Generalized Advantage Estimation from arxiv
-            assert next_values[i].shape == dones[i].shape, "{} != {}".format(next_values[i].shape, dones[i].shape)
             td_error = rewards[i] + self.GAMMA * dones[i] * next_values[i] - values[i]
-            assert advantage.shape == dones[i].shape, "{} != {}".format(advantage.shape, dones[i].shape)
             assert advantage.shape == td_error.shape, "{} != {}".format(advantage.shape, td_error.shape)
+            
             advantage = advantage * self.GAE_TAU * self.GAMMA * dones[i] + td_error
             advantages[i] = advantage.unsqueeze(0).detach()
 
@@ -124,34 +127,45 @@ class PPO():
                 sampled_states = states[idx]
                 sampled_full_states = full_states[idx]
                 sampled_actions = actions[idx]         
-                sampled_log_probs = log_probs[idx]
+                sampled_log_probs = log_probs[idx].detach()
                 sampled_advantages = advantages[idx]
-                sampled_returns = returns_array[idx]
+                sampled_returns = returns_array[idx].detach()
                 
                 # find out how likely the new network would have chosen the sampled_actions at the given sampled_states
                 new_log_probs = self.network.get_log_probs(sampled_actions, sampled_states)
             
                 assert new_log_probs.shape == sampled_log_probs.shape, "{} != {}".format(new_log_probs.shape, sampled_log_probs.shape)
                 assert sampled_advantages.shape == sampled_log_probs.shape, "{} != {}".format(sampled_advantages.shape, sampled_log_probs.shape)
-                ratio = (new_log_probs - sampled_log_probs.detach()).exp()
+                ratio = (new_log_probs - sampled_log_probs).exp()
                 clip = torch.clamp(ratio, 1-self.CLIP_EPSILON, 1+self.CLIP_EPSILON)
                 clipped_surrogate = torch.min(ratio*sampled_advantages, clip*sampled_advantages)
-                policy_loss = -clipped_surrogate.mean()
+                
+                # include a regularization term
+                # this steers new_policy towards 0.5
+                # add in 1.e-10 to avoid log(0) which gives nan
+                entropy = -(new_log_probs.exp()*sampled_log_probs) + \
+                        (1.0-new_log_probs.exp())*torch.log(1.0-sampled_log_probs.exp()+1.e-10)
+                
+                policy_loss = -(clipped_surrogate + self.BETA * entropy).mean()
                 
                 estimated_values = self.network.estimate(sampled_full_states).squeeze(-1)
                 
                 assert estimated_values.shape == sampled_returns.shape, "{} != {}".format(estimated_values
 .shape, sampled_returns.shape)
-                value_loss = self.loss_function(estimated_values, sampled_returns.detach())
+                value_loss = self.loss_function(estimated_values, sampled_returns)
+                
+                
+                
                 self.optim.zero_grad()
-                (policy_loss + value_loss).backward()
+                total_loss = policy_loss + value_loss
+                total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.GRADIENT_CLIP)
                 self.optim.step()
                 
                 self.steps_backprop += 1
                 self.logger.add_scalar('ppo/value_loss', value_loss, self.steps_backprop)
                 self.logger.add_scalar('ppo/policy_loss', policy_loss, self.steps_backprop)
-                self.logger.add_scalar('ppo/total_loss', value_loss + policy_loss, self.steps_backprop)
+                self.logger.add_scalar('ppo/total_loss', total_loss, self.steps_backprop)
                 
                 del idx, sampled_states, sampled_actions
                 del sampled_log_probs, sampled_advantages, sampled_returns
