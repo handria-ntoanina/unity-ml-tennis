@@ -21,50 +21,21 @@ def soft_update(local_model, target_model, tau):
     for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
         target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
 
-
-class ActionNoise:
-    """ Noise generator that disturb the output of a network """
-    def __init__(self, size, device, seed, mu=0., theta=0.15, sigma=0.2):
-        self.noise = OUNoise(size, device, seed, mu, theta, sigma)
+class SimpleNoise:
+    def __init__(self, size, scale = 1.0):
+        self.size = size
+        self.scale = scale
         
     def reset(self):
-        self.noise.reset()
-        
-    def apply(self, model, state):
-        action = model(state).cpu().data.numpy()
-        action += self.noise.sample()
-        return np.clip(action, -1, 1)
+        pass
     
-class ParameterNoise:
-    """ Noise generator that disturb the weight of a network and thus its output """
-    def __init__(self, model, device, seed, mu=0., theta=0.15, sigma=0.2):
-        size = sum([np.array(param.data.size()).prod() for param in model.parameters()])
-        self.noise = OUNoise(size, device, seed)
+    def sample(self):
+        return self.scale * np.random.randn(self.size)
         
-    def reset(self):
-        self.noise.reset()
-        
-    def apply(self, model, state):
-        noise_sample = self.noise.sample()
-        # apply a noise to the parameters only for exploration purpose
-        self.apply_noise(model, noise_sample)
-        ret = model(state).cpu().data.numpy()
-        # restore the previous parameters otherwise the noise will disturb the acquired knowldege
-        self.apply_noise(model, -noise_sample)
-        return ret
-    
-    def apply_noise(self, model, noise_sample):
-        start = torch.tensor(0)
-        for param in model.parameters():
-            size = np.array(param.data.size()).prod().item()
-            noise = noise_sample[start:start + size].reshape(param.data.size()).float()
-            param.data.add_(noise)
-            start += size
-    
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
 
-    def __init__(self, size, device, seed, mu=0., theta=0.15, sigma=0.2):
+    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
         """Initialize parameters and noise process."""
         self.mu = mu * np.ones(size)
         self.theta = theta
@@ -82,7 +53,7 @@ class OUNoise:
         x = self.state
         dx = self.theta * (self.mu - x) + self.sigma * np.array([random.random() for i in range(len(x))])
         self.state = x + dx
-        return torch.from_numpy(self.state).to(self.device).requires_grad_(False)
+        return self.state
     
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
@@ -122,11 +93,11 @@ class ReplayBuffer:
             yield self.to_tensor(temp[a:(a+1)*self.batch_size])
     
     def to_tensor(self, experiences):
-        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(self.device).requires_grad_(False)
-        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).float().to(self.device).requires_grad_(False)
-        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(self.device).requires_grad_(False)
-        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(self.device).requires_grad_(False)
-        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(self.device).requires_grad_(False)
+        states = torch.from_numpy(np.array([e.state for e in experiences if e is not None])).float().to(self.device).requires_grad_(False)
+        actions = torch.from_numpy(np.array([e.action for e in experiences if e is not None])).float().to(self.device).requires_grad_(False)
+        rewards = torch.from_numpy(np.array([e.reward for e in experiences if e is not None])).float().to(self.device).requires_grad_(False)
+        next_states = torch.from_numpy(np.array([e.next_state for e in experiences if e is not None])).float().to(self.device).requires_grad_(False)
+        dones = torch.from_numpy(np.array([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(self.device).requires_grad_(False)
   
         return (states, actions, rewards, next_states, dones)
 

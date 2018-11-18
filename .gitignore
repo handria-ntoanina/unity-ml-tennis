@@ -2,3 +2,5 @@
 .ipynb_checkpoints
 /logs
 /unity-environment.log
+__pycache__
+/weights

@@ -1,7 +1,3 @@
-With pytorch 0.4.1, it is needed to fix an issue in Anaconda3\envs\drlnd\Lib\site-packages\torch\distributions\utils.py. That version does not recognize torch.nn.Parameter as a Tensor during backpropagation.
-So to fix it, at the line 69, change the code if values[i].__class__.__name__ == 'Tensor' into if isinstance(values[i], torch.Tensor)
-
-
 # unity-ml-reacher
 This repository contains an implementation of reinforcement learning based on:
 	* DDPG but using parallel agents to solve the unity reacher environment
@@ -66,6 +62,14 @@ To run the codes, follow the next steps:
 	cd python
 	pip install .
 ```
+* Fix an issue of pytorch 0.4.1 to allow backpropagate the torch.distribution.normal function up to its standard deviation parameter
+    * change the line 69 of Anaconda3\envs\drlnd\Lib\site-packages\torch\distributions\utils.py
+```python
+# old line
+# tensor_idxs = [i for i in range(len(values)) if values[i].__class__.__name__ == 'Tensor']
+# new line
+tensor_idxs = [i for i in range(len(values)) if isinstance(values[i], torch.Tensor)]
+``` 
 * Create an IPython kernel for the `ddpg` environment
 ```bash
 	python -m ipykernel install --user --name ddpg --display-name "ddpg"
