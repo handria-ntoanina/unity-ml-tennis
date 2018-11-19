@@ -1,7 +1,7 @@
 # unity-ml-reacher
 This repository contains an implementation of deep reinforcement learning based on:
-	* Multi Agent Deep Deterministic Policy Gradients
-	* and Multi Agent Proximal Policy Optimization
+* Multi Agent Deep Deterministic Policy Gradients
+* and Multi Agent Proximal Policy Optimization
 	
 The environment to be solved is having two agents playing tennis. Each agent is conducting a racket to bounce a ball over a net.
 If an agent hits the ball over the net, it receives a reward of +0.1. If an agent lets a ball hit the ground or hits the ball out of bounds, it receives a reward of -0.01. Thus, the goal of each agent is to keep the ball in play.
@@ -14,7 +14,9 @@ A video of trained agents can be found here below <br/>
 * [MADDPG](https://www.youtube.com/watch?v=6o7d0N5qyFs)
 * [MAPPO](https://www.youtube.com/watch?v=2y7yCrYfTXA)
 ## Content of this repository
+* __analysis.xlsx__: results of several experiments
 * __report.pdf__: a document that describes the implementation of the MADDPG and MAPPO, along with ideas for future work
+* __run_tensorboard.bat__: to run tensorboard an visualize the loss during training
 * folder __agents__: contains the implementation of
 	* a Multi Agent DDPG
 	* a Proximal Policy Optimization
@@ -63,6 +65,14 @@ To run the codes, follow the next steps:
 	pip install gym[classic_control]
 	pip install gym[box2d]
 	```
+* Install Tensorflow and Tensorboard
+    ```bash
+    pip install tensorflow, tensorflow-gpu
+    ``` 
+    or 
+    ```bash
+    pip install tensorflow
+    ``` 
 * Install the dependencies under the folder python/
 ```bash
 	cd python

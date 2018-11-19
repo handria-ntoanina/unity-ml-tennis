@@ -143,7 +143,7 @@ class MADDPG():
             self.states.clear()
             self.actions.clear()
             
-        # Learn every UPDATE_EVERY time steps
+        # Learn every UPDATE_EVERY timesteps
         self.u_step = (self.u_step + 1) % self.UPDATE_EVERY
         
         t_step=0
