@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from agents.model_ppo import Gaussian
+from agents.model import Gaussian
 import random
 from agents.utils import soft_update
 
