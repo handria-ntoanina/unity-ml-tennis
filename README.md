@@ -73,6 +73,10 @@ To run the codes, follow the next steps:
     ```bash
     pip install tensorflow
     ``` 
+* Install PyTorch
+    ```bash
+    pip install pytorch
+    ```
 * Install the dependencies under the folder python/
 ```bash
 	cd python
