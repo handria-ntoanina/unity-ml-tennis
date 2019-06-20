@@ -92,6 +92,7 @@ tensor_idxs = [i for i in range(len(values)) if isinstance(values[i], torch.Tens
 ``` 
 * Create an IPython kernel for the `ddpg` environment
 ```bash
+	pip install ipykernel
 	python -m ipykernel install --user --name ddpg --display-name "ddpg"
 ```
 * Download the Unity Environment (thanks to Udacity) which matches your operating system
