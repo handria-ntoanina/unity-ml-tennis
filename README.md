@@ -82,6 +82,10 @@ To run the codes, follow the next steps:
 	cd python
 	pip install .
 ```
+* Install jupyter notebook
+```bash
+	pip install jupyter notebook
+```
 * Fix an issue of pytorch 0.4.1 to allow backpropagate the torch.distribution.normal function up to its standard deviation parameter
     * change the line 69 of Anaconda3\envs\drlnd\Lib\site-packages\torch\distributions\utils.py
 ```python
@@ -94,6 +98,10 @@ tensor_idxs = [i for i in range(len(values)) if isinstance(values[i], torch.Tens
 ```bash
 	pip install ipykernel
 	python -m ipykernel install --user --name ddpg --display-name "ddpg"
+```
+* If cannot start any notebook, run the following command to reinstall nbconvert
+```bash
+	pip3 install --upgrade --user nbconvert
 ```
 * Download the Unity Environment (thanks to Udacity) which matches your operating system
 	* Linux: [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis_Linux.zip)
